@@ -12,7 +12,7 @@ import sys
 DEBUG = False
 
 # Set initial state
-state       = "THINK"    # TURN, LINE, STOP
+state       = "THINK"   # TURN, THINK, DRIVE, STOP
 progress    = "INIT"    # INIT, EXEC, DONE
 direction   = 'U'       # U, D, L, R
 
@@ -132,7 +132,9 @@ while True:
                 '\n' + 
                 "[OUTPUT]\n" +
                 "Left motor duty cycle:\t\t"      + str(mo_left_val)  + '\n'
-                "Right motor duty cycle:\t\t"     + str(mo_right_val)
+                "Right motor duty cycle:\t\t"     + str(mo_right_val) + '\n'+'\n' +
+                "[MISC]\n" +
+                "Instruction index:\t\t"        +str(index) + '\n'
                 ) 
 
     # Handle button press / stop
@@ -152,7 +154,7 @@ while True:
  
         if progress == "INIT":
             reset_val   = gs_val
-            goal_ang    = control_turn(goal_dir, 'L')
+            goal_ang    = control_turn(direction,goal_dir)
             goal_pol    = goal_ang/abs(goal_ang)
             progress    = "EXEC"
 
@@ -170,7 +172,7 @@ while True:
             progress    = "INIT"
 
     # Test: Drive state
-    if state == "LINE":
+    if state == "DRIVE":
         
         if progress == "INIT":
             Kp = 1.25/2
@@ -213,24 +215,23 @@ while True:
 
     # Test: Think
     if state == "THINK":
-        if progress == "INIT"
-            if(index+1 == len(instructions):
-                progress == "DONE"
+        if progress == "INIT":
+            if(index+1 == len(instructions)):
+                progress = "DONE"
             else:
                 index += 1
                 goal_dir = instructions[index][0]
                 goal_push   = instructions[index][1]
                 progress = "EXEC"
-
-        if progress == "EXEC"
+        if progress == "EXEC":
             if goal_dir != direction:
-                state == "TURN"
-                progress == "INIT"
+                state = "TURN"
+                progress = "INIT"
             else:
-                state == "DRIVE"
-                progress == "INIT"
+                state = "DRIVE"
+                progress = "INIT"
         
-        if progress == "DONE"
+        if progress == "DONE":
             print("Goal reached!")
-            state == "STOP"
+            state = "STOP"
                 
