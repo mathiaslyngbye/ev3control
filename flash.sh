@@ -11,7 +11,7 @@ then
     # Run program
     sshpass -p 'ai1rockz' ssh ai1@192.168.0.1 python3 ev3control.py
 else
-    echo "Flashing ev3control.pyi and instructions.csv...";
+    echo "Flashing ev3control.py and instructions.csv...";
     # Use sshpass to single command copy main file
     sshpass -p 'ai1rockz' scp ./ev3control.py ai1@192.168.0.1:~/
     sshpass -p 'ai1rockz' scp ./instructions.csv ai1@192.168.0.1:~/
