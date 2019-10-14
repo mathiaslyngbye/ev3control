@@ -20,6 +20,7 @@ direction   = 'U'       # U, D, L, R
 btn = ev3.Button()
 lightSensorLeft     = ev3.ColorSensor('in1')
 lightSensorRight    = ev3.ColorSensor('in4')
+lightSensorBumper   = ev3.LightSensor('in3')
 gyroSensor          = ev3.GyroSensor('in2')
 
 # Configure inputs
@@ -27,13 +28,10 @@ gyroSensor.mode = 'GYRO-ANG'
 gs_units = gyroSensor.units
 gs_tolerance = 3
 
-# Unused inputs
-#ultrasonicSensor = ev3.UltrasonicSensor('in2')
-#touchSensor =  ev3.TouchSensor('in2')
-
 # Check if sonsors are connected
 assert lightSensorLeft.connected,   "Left light sensor is not connected (should be 'in1')"
 assert lightSensorRight.connected,  "Right light sensor is not conected (should be 'in4')"
+assert lightSensorBumper.connected, "Bumper sensor is not connected (should be 'in3')"
 assert gyroSensor.connected,        "Gyro sensor is not connected (should be 'in2')"
 print("Inputs loaded succesfully!")
 
@@ -75,7 +73,10 @@ SPEED_TURN = 20
 SPEED_SLOW = 30
 SPEED_BASE = 50
 SPEED_FAST = 70
+SPEED_REV = -30
 THRESHOLD_BLACK = 15
+THRESHOLD_BL = 350
+THRESHOLD_BU = 500
 
 # Relative turn angle function
 def control_turn(dir_start, dir_goal):
@@ -108,6 +109,7 @@ while True:
     # Read sensor inputs every loop
     ls_left_val     = lightSensorLeft.value()
     ls_right_val    = lightSensorRight.value()
+    ls_bumper_val   = lightSensorBumper.value()
     gs_val          = gyroSensor.value()
 
     # Read motor outputs
@@ -128,6 +130,7 @@ while True:
                 "[INPUT]\n" +
                 "Left light sensor value:\t"    + str(ls_left_val)  + '\n'      +
                 "Right light sensor value:\t"   + str(ls_right_val) + '\n'      +
+                "Bumper light sensor value:\t" + str(ls_bumper_val) + '\n'      +
                 "Gyro sensor value:\t\t"        + str(gs_val)       + gs_units  + '\n'  + 
                 '\n' + 
                 "[OUTPUT]\n" +
@@ -185,6 +188,7 @@ while True:
 
             motorLeft.duty_cycle_sp = SPEED_BASE
             motorRight.duty_cycle_sp = SPEED_BASE
+
             
             if not(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
                 progress = "EXEC"
@@ -228,10 +232,81 @@ while True:
                 state = "TURN"
                 progress = "INIT"
             else:
-                state = "DRIVE"
-                progress = "INIT"
+                if(goal_push == 0):
+                    state = "DRIVE"
+                    progress = "INIT"
+                else:
+                    state = "PUSH"
+                    progress = "INIT"
         
         if progress == "DONE":
             print("Goal reached!")
             state = "STOP"
-                
+            
+
+    # Test: Push
+    if state == "PUSH":
+        
+        if progress == "INIT":
+            
+            Kp = 1.25/2
+            Ki = 0
+            Kd = 15
+
+            acc = 0
+            ls_error = 0
+            ls_error_prev = 0
+
+            intersection = int(goal_push) + 1
+
+            bumper_hit = False
+
+            motorLeft.duty_cycle_sp = SPEED_BASE
+            motorRight.duty_cycle_sp = SPEED_BASE
+
+            if not(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
+                progress = "EXEC"
+
+
+        if progress == "EXEC":
+
+        #    print(intersection)
+            ls_error_prev = ls_error
+            ls_error = ls_left_val - ls_right_val
+            acc += ls_error
+            derr = ls_error - ls_error_prev
+            pid_corr = Kp*ls_error + Ki*acc + Kd*derr
+
+            if( not bumper_hit and (ls_bumper_val < THRESHOLD_BL)):
+                intersection -= 1
+                bumper_hit = True
+            else:
+                if (SPEED_BASE+abs(pid_corr) <= 100):
+                    motorLeft.duty_cycle_sp = SPEED_BASE+(pid_corr)
+                    motorRight.duty_cycle_sp = SPEED_BASE-(pid_corr)
+
+                if (ls_bumper_val > THRESHOLD_BU):
+                    bumper_hit = False
+
+            if (intersection == 0):
+
+                progress = "DONE"
+
+
+
+        if progress == "DONE":
+            motorLeft.duty_cycle_sp = SPEED_REV
+            motorRight.duty_cycle_sp = SPEED_REV
+            sleep(5)
+            motorLeft.duty_cycle_sp = 0
+            motorRight.duty_cycle_sp = 0
+            dir_inv = { 'U': 'D',
+                        'D': 'U',
+                        'L': 'R',
+                        'R': 'L'}    
+            goal_dir = dir_inv[direction]
+            state = "TURN"
+            progress = "INIT"
+
+
+
