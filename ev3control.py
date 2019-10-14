@@ -75,8 +75,9 @@ SPEED_BASE = 50
 SPEED_FAST = 70
 SPEED_REV = -30
 THRESHOLD_BLACK = 15
-THRESHOLD_BL = 350
-THRESHOLD_BU = 500
+THRESHOLD_BL = 400
+THRESHOLD_BU = 600
+TIME_REV = 1.5
 
 # Relative turn angle function
 def control_turn(dir_start, dir_goal):
@@ -171,8 +172,12 @@ while True:
 
         if progress == "DONE":
             direction   = goal_dir
-            state       = "DRIVE"
-            progress    = "INIT"
+            if(goal_push > 0):
+                state = "PUSH"
+            else:
+                state = "DRIVE"
+
+            progress = "INIT"
 
     # Test: Drive state
     if state == "DRIVE":
@@ -225,7 +230,7 @@ while True:
             else:
                 index += 1
                 goal_dir = instructions[index][0]
-                goal_push   = instructions[index][1]
+                goal_push   = int(instructions[index][1])
                 progress = "EXEC"
         if progress == "EXEC":
             if goal_dir != direction:
@@ -289,15 +294,13 @@ while True:
                     bumper_hit = False
 
             if (intersection == 0):
-
                 progress = "DONE"
 
-
-
         if progress == "DONE":
+
             motorLeft.duty_cycle_sp = SPEED_REV
             motorRight.duty_cycle_sp = SPEED_REV
-            sleep(5)
+            sleep(TIME_REV)
             motorLeft.duty_cycle_sp = 0
             motorRight.duty_cycle_sp = 0
             dir_inv = { 'U': 'D',
@@ -305,8 +308,9 @@ while True:
                         'L': 'R',
                         'R': 'L'}    
             goal_dir = dir_inv[direction]
+
+            goal_push = 0
             state = "TURN"
             progress = "INIT"
-
 
 
