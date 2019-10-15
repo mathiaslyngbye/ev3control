@@ -25,8 +25,8 @@ gyroSensor          = ev3.GyroSensor('in2')
 
 # Configure inputs
 gyroSensor.mode = 'GYRO-ANG'
-gs_units = gyroSensor.units
-gs_tolerance = 3
+gs_units        = gyroSensor.units
+gs_tolerance    = 3
 
 # Check if sonsors are connected
 assert lightSensorLeft.connected,   "Left light sensor is not connected (should be 'in1')"
@@ -123,22 +123,24 @@ while True:
         system('clear')		
 
         # Printing at once because ev3/ssh console is slow
-        print(  "[STATE]\n" +
-                "Current state:\t\t\t"          + state             + '\n'      +
-                "Current state progress:\t\t"   + progress          + '\n'      +
-                "Current direction:\t\t"        + direction         + '\n'      +   
-                '\n' +
-                "[INPUT]\n" +
-                "Left light sensor value:\t"    + str(ls_left_val)  + '\n'      +
-                "Right light sensor value:\t"   + str(ls_right_val) + '\n'      +
-                "Bumper light sensor value:\t" + str(ls_bumper_val) + '\n'      +
-                "Gyro sensor value:\t\t"        + str(gs_val)       + gs_units  + '\n'  + 
-                '\n' + 
-                "[OUTPUT]\n" +
-                "Left motor duty cycle:\t\t"      + str(mo_left_val)  + '\n'
-                "Right motor duty cycle:\t\t"     + str(mo_right_val) + '\n'+'\n' +
-                "[MISC]\n" +
-                "Instruction index:\t\t"        +str(index) + '\n'
+        print(  "[STATE]\n"                     +
+                "Current state:\t\t\t"          + state                 + '\n'      +
+                "Current state progress:\t\t"   + progress              + '\n'      +
+                "Current direction:\t\t"        + direction             + '\n'      +   
+                '\n'                            +
+                "[INPUT]\n"                     +
+                "Left light sensor value:\t"    + str(ls_left_val)      + '\n'      +
+                "Right light sensor value:\t"   + str(ls_right_val)     + '\n'      +
+                "Bumper light sensor value:\t"  + str(ls_bumper_val)    + '\n'      +
+                "Gyro sensor value:\t\t"        + str(gs_val)           + gs_units  + 
+                '\n'                            + 
+                '\n'                            + 
+                "[OUTPUT]\n"                    +
+                "Left motor duty cycle:\t\t"    + str(mo_left_val)      + '\n'
+                "Right motor duty cycle:\t\t"   + str(mo_right_val)     + '\n'      + 
+                '\n'                            +
+                "[MISC]\n"                      +
+                "Instruction index:\t\t"        + str(index)            + '\n'
                 ) 
 
     # Handle button press / stop
@@ -148,14 +150,18 @@ while True:
         motorRight.duty_cycle_sp = 0
         exit()
 
-    # Test: Stop state
+# Stop state
+# -----------------------------------------------------------------------------
+
     if state == "STOP":
         motorLeft.duty_cycle_sp = 0
         motorRight.duty_cycle_sp = 0
 
-    # Test: Turn state
+# Turn state
+# -----------------------------------------------------------------------------
+
     if state == "TURN":
- 
+
         if progress == "INIT":
             reset_val   = gs_val
             goal_ang    = control_turn(direction,goal_dir)
@@ -176,25 +182,22 @@ while True:
                 state = "PUSH"
             else:
                 state = "DRIVE"
-
             progress = "INIT"
 
-    # Test: Drive state
+# Drive state
+# -----------------------------------------------------------------------------
+
     if state == "DRIVE":
         
         if progress == "INIT":
             Kp = 1.25/2
             Ki = 0
-            Kd = 15
-            
+            Kd = 15    
             acc = 0
             ls_error = 0
             ls_error_prev = 0
-
             motorLeft.duty_cycle_sp = SPEED_BASE
             motorRight.duty_cycle_sp = SPEED_BASE
-
-            
             if not(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
                 progress = "EXEC"
             
@@ -222,8 +225,11 @@ while True:
             state       = "THINK"
             progress    = "INIT"
 
-    # Test: Think
+# Think state
+# -----------------------------------------------------------------------------
+
     if state == "THINK":
+
         if progress == "INIT":
             if(index+1 == len(instructions)):
                 progress = "DONE"
@@ -232,6 +238,7 @@ while True:
                 goal_dir = instructions[index][0]
                 goal_push   = int(instructions[index][1])
                 progress = "EXEC"
+        
         if progress == "EXEC":
             if goal_dir != direction:
                 state = "TURN"
@@ -247,13 +254,12 @@ while True:
         if progress == "DONE":
             print("Goal reached!")
             state = "STOP"
-            
 
-    # Test: Push
-    if state == "PUSH":
-        
+# Push state
+# -----------------------------------------------------------------------------
+    
+    if state == "PUSH": 
         if progress == "INIT":
-            
             Kp = 1.25/2
             Ki = 0
             Kd = 15
@@ -263,7 +269,6 @@ while True:
             ls_error_prev = 0
 
             intersection = int(goal_push) + 1
-
             bumper_hit = False
 
             motorLeft.duty_cycle_sp = SPEED_BASE
@@ -272,10 +277,7 @@ while True:
             if not(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
                 progress = "EXEC"
 
-
         if progress == "EXEC":
-
-        #    print(intersection)
             ls_error_prev = ls_error
             ls_error = ls_left_val - ls_right_val
             acc += ls_error
@@ -297,7 +299,6 @@ while True:
                 progress = "DONE"
 
         if progress == "DONE":
-
             motorLeft.duty_cycle_sp = SPEED_REV
             motorRight.duty_cycle_sp = SPEED_REV
             sleep(TIME_REV)
@@ -312,5 +313,3 @@ while True:
             goal_push = 0
             state = "TURN"
             progress = "INIT"
-
-
