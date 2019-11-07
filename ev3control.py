@@ -2,7 +2,7 @@
 
 #Import required libraries
 import ev3dev.ev3 as ev3
-from time import sleep
+import time
 from os import system
 import signal
 import csv
@@ -10,6 +10,7 @@ import sys
 
 # Toggle debug output
 DEBUG = False
+LOG = False
 
 # Set initial state
 state       = "THINK"   # TURN, THINK, DRIVE, STOP
@@ -104,6 +105,11 @@ while not btn.any():
     pass
 ev3.Sound.beep().wait()
 
+# Start logging
+if LOG:
+    with open("drive_log.csv","w+") as log_csv:
+        logw = csv.writer(log_csv,delimiter=',')
+
 # Main control loop
 while True:
 
@@ -190,6 +196,10 @@ while True:
     if state == "DRIVE":
         
         if progress == "INIT":
+            if LOG:
+                log_arr = []
+                t0 = time.clock();
+
             Kp = 1.25/2
             Ki = 0
             Kd = 15    
@@ -207,7 +217,9 @@ while True:
             acc += ls_error    
             derr = ls_error - ls_error_prev
             pid_corr = Kp*ls_error + Ki*acc + Kd*derr
-
+            
+            if LOG:
+                log_arr.append([time.clock()-t0, ls_error])
             #if (ls_error < 5): 
             #    if ((SPEED_BASE + base1) < 80):
             #        base1 = base1 + 1
@@ -225,6 +237,11 @@ while True:
             state       = "THINK"
             progress    = "INIT"
 
+            if LOG:
+                with open("drive_log.csv","a") as log_csv:
+                    logw = csv.writer(log_csv,delimiter=',')
+                    logw.writerows(log_arr)
+
 # Think state
 # -----------------------------------------------------------------------------
 
@@ -238,7 +255,7 @@ while True:
                 goal_dir = instructions[index][0]
                 goal_push   = int(instructions[index][1])
                 progress = "EXEC"
-        
+
         if progress == "EXEC":
             if goal_dir != direction:
                 state = "TURN"
