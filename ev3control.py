@@ -45,6 +45,8 @@ motorLeft.run_direct()
 motorRight.run_direct()
 motorLeft.polarity  = "normal"
 motorRight.polarity = "normal"
+motorLeft.stop_action = "brake"
+motorRight.stop_action = "brake"
 print("Outputs loaded succesfully!")
 
 # Import instructions
@@ -160,9 +162,10 @@ while True:
 # -----------------------------------------------------------------------------
 
     if state == "STOP":
-        motorLeft.duty_cycle_sp = 0
-        motorRight.duty_cycle_sp = 0
-
+        #motorLeft.duty_cycle_sp = 0
+        #motorRight.duty_cycle_sp = 0
+        motorLeft.stop
+        motorRight.stop
 # Turn state
 # -----------------------------------------------------------------------------
 
