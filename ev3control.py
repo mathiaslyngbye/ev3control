@@ -45,8 +45,8 @@ motorLeft.run_direct()
 motorRight.run_direct()
 motorLeft.polarity  = "normal"
 motorRight.polarity = "normal"
-motorLeft.stop_action = "brake"
-motorRight.stop_action = "brake"
+#motorLeft.stop_action = "brake"
+#motorRight.stop_action = "brake"
 print("Outputs loaded succesfully!")
 
 # Import instructions
@@ -72,9 +72,9 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 # Define various control variables
-SPEED_TURN = 20
+SPEED_TURN = 50
 SPEED_SLOW = 30
-SPEED_BASE = 50
+SPEED_BASE = 70
 SPEED_FAST = 70
 SPEED_REV = -30
 THRESHOLD_BLACK = 15
