@@ -162,10 +162,10 @@ while True:
 # -----------------------------------------------------------------------------
 
     if state == "STOP":
-        #motorLeft.duty_cycle_sp = 0
-        #motorRight.duty_cycle_sp = 0
-        motorLeft.stop
-        motorRight.stop
+        motorLeft.duty_cycle_sp = 0
+        motorRight.duty_cycle_sp = 0
+        #motorLeft.stop
+        #motorRight.stop
 # Turn state
 # -----------------------------------------------------------------------------
 
