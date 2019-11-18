@@ -10,7 +10,7 @@ import sys
 
 # Toggle debug output
 DEBUG = False
-LOG = False
+LOG = True
 
 # Set initial state
 state       = "THINK"   # TURN, THINK, DRIVE, STOP
@@ -27,7 +27,7 @@ gyroSensor          = ev3.GyroSensor('in2')
 # Configure inputs
 gyroSensor.mode = 'GYRO-ANG'
 gs_units        = gyroSensor.units
-gs_tolerance    = 3
+gs_tolerance    = 20
 
 # Check if sonsors are connected
 assert lightSensorLeft.connected,   "Left light sensor is not connected (should be 'in1')"
@@ -74,7 +74,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # Define various control variables
 SPEED_TURN = 50
 SPEED_SLOW = 30
-SPEED_BASE = 70
+SPEED_BASE = 60
 SPEED_FAST = 70
 SPEED_REV = -30
 THRESHOLD_BLACK = 15
@@ -109,9 +109,7 @@ ev3.Sound.beep().wait()
 
 # Start logging
 if LOG:
-    with open("drive_log.csv","w+") as log_csv:
-        logw = csv.writer(log_csv,delimiter=',')
-
+    log_arr = []
 # Main control loop
 while True:
 
@@ -200,7 +198,6 @@ while True:
         
         if progress == "INIT":
             if LOG:
-                log_arr = []
                 t0 = time.clock();
 
             Kp = 1.25/2
@@ -240,11 +237,6 @@ while True:
             state       = "THINK"
             progress    = "INIT"
 
-            if LOG:
-                with open("drive_log.csv","a") as log_csv:
-                    logw = csv.writer(log_csv,delimiter=',')
-                    logw.writerows(log_arr)
-
 # Think state
 # -----------------------------------------------------------------------------
 
@@ -273,6 +265,12 @@ while True:
         
         if progress == "DONE":
             print("Goal reached!")
+
+            if LOG:
+                with open("drive_log_speed60_turn50_tol20.csv","w+") as log_csv:
+                    logw = csv.writer(log_csv,delimiter=',')
+                    logw.writerows(log_arr)
+            
             state = "STOP"
 
 # Push state
