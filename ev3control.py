@@ -10,7 +10,7 @@ import sys
 
 # Toggle debug output
 DEBUG = False
-LOG = True
+LOG = False
 
 # Set initial state
 state       = "THINK"   # TURN, THINK, DRIVE, STOP
@@ -72,7 +72,7 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 # Define various control variables
-SPEED_TURN = 50
+SPEED_TURN = 45
 SPEED_SLOW = 30
 SPEED_BASE = 60
 SPEED_FAST = 70
@@ -267,7 +267,7 @@ while True:
             print("Goal reached!")
 
             if LOG:
-                with open("drive_log_speed60_turn50_tol20.csv","w+") as log_csv:
+                with open("drive_log_speed60_turn45_tol20.csv","w+") as log_csv:
                     logw = csv.writer(log_csv,delimiter=',')
                     logw.writerows(log_arr)
             
@@ -319,7 +319,7 @@ while True:
         if progress == "DONE":
             motorLeft.duty_cycle_sp = SPEED_REV
             motorRight.duty_cycle_sp = SPEED_REV
-            sleep(TIME_REV)
+            time.sleep(TIME_REV)
             motorLeft.duty_cycle_sp = 0
             motorRight.duty_cycle_sp = 0
             dir_inv = { 'U': 'D',
