@@ -23,7 +23,7 @@ lightSensorLeft     = ev3.ColorSensor('in1')
 lightSensorRight    = ev3.ColorSensor('in4')
 lightSensorBumper   = ev3.LightSensor('in3')
 gyroSensor          = ev3.GyroSensor('in2')
-
+ls_corr         = -8
 # Configure inputs
 gyroSensor.mode = 'GYRO-ANG'
 gs_units        = gyroSensor.units
@@ -68,10 +68,10 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 # Define various motor speeds
-SPEED_TURN  =  45
-SPEED_BASE  =  65
-SPEED_CORR  = -20
-SPEED_REV   = -30
+SPEED_TURN  =  55
+SPEED_BASE  =  75
+SPEED_CORR  = -15
+SPEED_REV   = -60
 
 # Define sensor thresholds
 THRESHOLD_BLACK = 15    # Light sensor black
@@ -79,7 +79,7 @@ THRESHOLD_BL = 400      # Bumper sensor lower
 THRESHOLD_BU = 600      # Bumper sensor upper
 
 # Define timings
-TIME_REV = 1.5          
+TIME_REV = 0.5         
 
 # Define log file name
 log_name  = "log" 
@@ -102,8 +102,13 @@ def control_turn(dir_start, dir_goal):
     dir_val = dir_cor[dir_goal] - dir_cor[dir_start]
     dir_val = (dir_val + 180) % 360 - 180    
 
-    # Return relative turn angle
-    return dir_val 
+    # Return relative turn anglei
+    if(dir_val == 90):
+        return 100
+    elif (dir_val == 180):
+        return 175
+    else:
+        return dir_val 
 
 # Turn off motors 
 motorLeft.duty_cycle_sp = 0
@@ -116,8 +121,8 @@ while not btn.any():
 ev3.Sound.beep().wait()
 
 # Start logging
-if LOG:
-    log_arr = []
+#if LOG:
+#    log_arr = []
 
 # Main control loop
 while True:
@@ -180,6 +185,9 @@ while True:
         gs_val          = gyroSensor.value()
 
         if progress == "INIT":
+            motorLeft.duty_cycle_sp = 0
+            motorRight.duty_cycle_sp = 0
+            time.sleep(0.1)
             reset_val   = gs_val
             goal_ang    = control_turn(direction,goal_dir)
             goal_pol    = goal_ang/abs(goal_ang)
@@ -191,6 +199,9 @@ while True:
                 motorLeft.duty_cycle_sp = SPEED_TURN*goal_pol
                 motorRight.duty_cycle_sp = -SPEED_TURN*goal_pol                
             else:
+                motorLeft.duty_cycle_sp = 0
+                motorRight.duty_cycle_sp = 0
+                time.sleep(0.1)
                 progress = "DONE"        
 
         if progress == "DONE":
@@ -211,10 +222,10 @@ while True:
                 t0 = time.clock();
 
             # Set various control variables
-            Kp = 1.25/2
+            Kp = 0.37
             #Ki = 0
-            Kd = 15    
-            acc = 0
+            Kd = 10 
+            #acc = 0
             ls_error = 0
             ls_error_prev = 0
             brake_reduce = 0;
@@ -223,7 +234,7 @@ while True:
             # Start motors
             motorLeft.duty_cycle_sp = SPEED_BASE
             motorRight.duty_cycle_sp = SPEED_BASE
-
+            time.sleep(0.1)
             # Continue if not on line
             if not(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
                 progress = "EXEC"
@@ -231,13 +242,13 @@ while True:
         if progress == "EXEC":
             # PID control
             ls_error_prev = ls_error
-            ls_error = ls_left_val - ls_right_val
+            ls_error = ls_left_val - ls_right_val + ls_corr
             #acc += ls_error    
             derr = ls_error - ls_error_prev
             pid_corr = Kp*ls_error + Kd*derr
             
-            if LOG:
-                log_arr.append([time.clock()-t0, ls_error])
+            #if LOG:
+            #    log_arr.append([time.clock()-t0, ls_error])
             
             # If bumper detects line
             if ( not ls_bumper_line and (ls_bumper_val < THRESHOLD_BL)):
@@ -293,10 +304,10 @@ while True:
         if progress == "DONE":
             print("Goal reached!")
 
-            if LOG:
-                with open(log_name,"w+") as log_csv:
-                    logw = csv.writer(log_csv,delimiter=',')
-                    logw.writerows(log_arr)
+            #if LOG:
+            #    with open(log_name,"w+") as log_csv:
+            #        logw = csv.writer(log_csv,delimiter=',')
+            #        logw.writerows(log_arr)
             
             state = "STOP"
 
@@ -305,9 +316,9 @@ while True:
     
     if state == "PUSH": 
         if progress == "INIT":
-            Kp = 1.25/2
-            Ki = 0
-            Kd = 15
+            Kp = 0.37
+            #Ki = 0
+            Kd = 10
 
             acc = 0
             ls_error = 0
@@ -324,10 +335,10 @@ while True:
 
         if progress == "EXEC":
             ls_error_prev = ls_error
-            ls_error = ls_left_val - ls_right_val
-            acc += ls_error
+            ls_error = ls_left_val - ls_right_val + ls_corr
+            #acc += ls_error
             derr = ls_error - ls_error_prev
-            pid_corr = Kp*ls_error + Ki*acc + Kd*derr
+            pid_corr = Kp*ls_error  + Kd*derr
 
             if( not ls_bumper_line and (ls_bumper_val < THRESHOLD_BL)):
                 intersection -= 1
@@ -344,6 +355,9 @@ while True:
                 progress = "DONE"
 
         if progress == "DONE":
+            motorLeft.duty_cycle_sp = 0
+            motorRight.duty_cycle_sp = 0
+            time.sleep(0.1)
             motorLeft.duty_cycle_sp = SPEED_REV
             motorRight.duty_cycle_sp = SPEED_REV
             time.sleep(TIME_REV)
