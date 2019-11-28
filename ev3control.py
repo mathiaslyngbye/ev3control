@@ -45,8 +45,6 @@ motorLeft.run_direct()
 motorRight.run_direct()
 motorLeft.polarity  = "normal"
 motorRight.polarity = "normal"
-#motorLeft.stop_action = "brake"
-#motorRight.stop_action = "brake"
 print("Outputs loaded succesfully!")
 
 # Import instructions
@@ -67,20 +65,30 @@ def signal_handler(sig, frame):
     motorLeft.duty_cycle_sp     = 0
     motorRight.duty_cycle_sp    = 0
     exit(0)
-
-# Run signal handler
 signal.signal(signal.SIGINT, signal_handler)
 
-# Define various control variables
-SPEED_TURN = 45
-SPEED_SLOW = 30
-SPEED_BASE = 60
-SPEED_FAST = 70
-SPEED_REV = -30
-THRESHOLD_BLACK = 15
-THRESHOLD_BL = 400
-THRESHOLD_BU = 600
-TIME_REV = 1.5
+# Define various motor speeds
+SPEED_TURN  =  45
+SPEED_BASE  =  65
+SPEED_CORR  = -20
+SPEED_REV   = -30
+
+# Define sensor thresholds
+THRESHOLD_BLACK = 15    # Light sensor black
+THRESHOLD_BL = 400      # Bumper sensor lower
+THRESHOLD_BU = 600      # Bumper sensor upper
+
+# Define timings
+TIME_REV = 1.5          
+
+# Define log file name
+log_name  = "log" 
+log_name += "_turn" + str(SPEED_TURN) 
+log_name += "_base" + str(SPEED_BASE) 
+log_name += "_corr" + str(SPEED_CORR) 
+log_name += "_rev"  + str(SPEED_REV)
+log_name += "_tol"  + str(gs_tolerance)
+log_name += ".csv"
 
 # Relative turn angle function
 def control_turn(dir_start, dir_goal):
@@ -110,6 +118,7 @@ ev3.Sound.beep().wait()
 # Start logging
 if LOG:
     log_arr = []
+
 # Main control loop
 while True:
 
@@ -117,11 +126,11 @@ while True:
     ls_left_val     = lightSensorLeft.value()
     ls_right_val    = lightSensorRight.value()
     ls_bumper_val   = lightSensorBumper.value()
-    gs_val          = gyroSensor.value()
+    #gs_val          = gyroSensor.value()
 
     # Read motor outputs
-    mo_left_val    = motorLeft.duty_cycle_sp
-    mo_right_val    = motorRight.duty_cycle_sp
+    #mo_left_val     = motorLeft.duty_cycle_sp
+    #mo_right_val    = motorRight.duty_cycle_sp
 
     # Print debug info if true
     if DEBUG:
@@ -142,8 +151,8 @@ while True:
                 '\n'                            + 
                 '\n'                            + 
                 "[OUTPUT]\n"                    +
-                "Left motor duty cycle:\t\t"    + str(mo_left_val)      + '\n'
-                "Right motor duty cycle:\t\t"   + str(mo_right_val)     + '\n'      + 
+                #"Left motor duty cycle:\t\t"    + str(mo_left_val)      + '\n'
+                #"Right motor duty cycle:\t\t"   + str(mo_right_val)     + '\n'      + 
                 '\n'                            +
                 "[MISC]\n"                      +
                 "Instruction index:\t\t"        + str(index)            + '\n'
@@ -160,14 +169,15 @@ while True:
 # -----------------------------------------------------------------------------
 
     if state == "STOP":
+
         motorLeft.duty_cycle_sp = 0
         motorRight.duty_cycle_sp = 0
-        #motorLeft.stop
-        #motorRight.stop
+
 # Turn state
 # -----------------------------------------------------------------------------
 
     if state == "TURN":
+        gs_val          = gyroSensor.value()
 
         if progress == "INIT":
             reset_val   = gs_val
@@ -184,7 +194,7 @@ while True:
                 progress = "DONE"        
 
         if progress == "DONE":
-            direction   = goal_dir
+            direction = goal_dir
             if(goal_push > 0):
                 state = "PUSH"
             else:
@@ -200,38 +210,55 @@ while True:
             if LOG:
                 t0 = time.clock();
 
+            # Set various control variables
             Kp = 1.25/2
-            Ki = 0
+            #Ki = 0
             Kd = 15    
             acc = 0
             ls_error = 0
             ls_error_prev = 0
+            brake_reduce = 0;
+            ls_bumper_line = False
+
+            # Start motors
             motorLeft.duty_cycle_sp = SPEED_BASE
             motorRight.duty_cycle_sp = SPEED_BASE
+
+            # Continue if not on line
             if not(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
                 progress = "EXEC"
             
         if progress == "EXEC":
+            # PID control
             ls_error_prev = ls_error
             ls_error = ls_left_val - ls_right_val
-            acc += ls_error    
+            #acc += ls_error    
             derr = ls_error - ls_error_prev
-            pid_corr = Kp*ls_error + Ki*acc + Kd*derr
+            pid_corr = Kp*ls_error + Kd*derr
             
             if LOG:
                 log_arr.append([time.clock()-t0, ls_error])
-            #if (ls_error < 5): 
-            #    if ((SPEED_BASE + base1) < 80):
-            #        base1 = base1 + 1
-            #    else: 
-            #        base1 = 0
-
+            
+            # If bumper detects line
+            if ( not ls_bumper_line and (ls_bumper_val < THRESHOLD_BL)):
+                if(goal_dir != instructions[index+1][0]):
+                    brake_reduce = SPEED_CORR
+                ls_bumper_line = True
+ 
             if(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
                 progress = "DONE"
             else:
+                # Avoid driving motor faster than possible
                 if (SPEED_BASE+abs(pid_corr) <= 100):
-                    motorLeft.duty_cycle_sp = SPEED_BASE+(pid_corr)
-                    motorRight.duty_cycle_sp = SPEED_BASE-(pid_corr)
+                    motorLeft.duty_cycle_sp = SPEED_BASE+brake_reduce+(pid_corr)
+                    motorRight.duty_cycle_sp = SPEED_BASE+brake_reduce-(pid_corr)
+                #else:
+                #    if(pid_corr>0):
+                #        motorLeft.duty_cycle_sp  = 100+brake_reduce
+                #        motorRight.duty_cycle_sp = SPEED_BASE+brake_reduce-(pid_corr)
+                #    else:
+                #        motorLeft.duty_cycle_sp  = SPEED_BASE+brake_reduce+(pid_corr)
+                #        motorRight.duty_cycle_sp = 100+brake_reduce
 
         if progress == "DONE":
             state       = "THINK"
@@ -247,27 +274,27 @@ while True:
                 progress = "DONE"
             else:
                 index += 1
-                goal_dir = instructions[index][0]
-                goal_push   = int(instructions[index][1])
-                progress = "EXEC"
+                goal_dir  = instructions[index][0]
+                goal_push = int(instructions[index][1])
+                progress  = "EXEC"
 
         if progress == "EXEC":
             if goal_dir != direction:
-                state = "TURN"
+                state    = "TURN"
                 progress = "INIT"
             else:
                 if(goal_push == 0):
-                    state = "DRIVE"
+                    state    = "DRIVE"
                     progress = "INIT"
                 else:
-                    state = "PUSH"
+                    state    = "PUSH"
                     progress = "INIT"
         
         if progress == "DONE":
             print("Goal reached!")
 
             if LOG:
-                with open("drive_log_speed60_turn45_tol20.csv","w+") as log_csv:
+                with open(log_name,"w+") as log_csv:
                     logw = csv.writer(log_csv,delimiter=',')
                     logw.writerows(log_arr)
             
@@ -287,7 +314,7 @@ while True:
             ls_error_prev = 0
 
             intersection = int(goal_push) + 1
-            bumper_hit = False
+            ls_bumper_line = False
 
             motorLeft.duty_cycle_sp = SPEED_BASE
             motorRight.duty_cycle_sp = SPEED_BASE
@@ -302,16 +329,16 @@ while True:
             derr = ls_error - ls_error_prev
             pid_corr = Kp*ls_error + Ki*acc + Kd*derr
 
-            if( not bumper_hit and (ls_bumper_val < THRESHOLD_BL)):
+            if( not ls_bumper_line and (ls_bumper_val < THRESHOLD_BL)):
                 intersection -= 1
-                bumper_hit = True
+                ls_bumper_line = True
             else:
                 if (SPEED_BASE+abs(pid_corr) <= 100):
                     motorLeft.duty_cycle_sp = SPEED_BASE+(pid_corr)
                     motorRight.duty_cycle_sp = SPEED_BASE-(pid_corr)
 
                 if (ls_bumper_val > THRESHOLD_BU):
-                    bumper_hit = False
+                    ls_bumper_line = False
 
             if (intersection == 0):
                 progress = "DONE"
