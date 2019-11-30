@@ -70,7 +70,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # Define various motor speeds
 SPEED_TURN  =  40#55
 SPEED_BASE  =  60
-SPEED_CORR  = -15
+SPEED_CORR  = 0
 SPEED_REV   = -60
 
 # Define sensor thresholds
@@ -106,7 +106,7 @@ def control_turn(dir_start, dir_goal):
     if(dir_val == 90):
         return 90
     elif (dir_val == 180):
-        return 170
+        return 173
     else:
         return dir_val 
 
@@ -260,7 +260,7 @@ while True:
                 progress = "DONE"
             else:
                 # Avoid driving motor faster than possible
-                if (SPEED_BASE+abs(pid_corr) <= 100):
+                if (SPEED_BASE+abs(pid_corr)+brake_reduce <= 100):
                     motorLeft.duty_cycle_sp = SPEED_BASE+brake_reduce+(pid_corr)
                     motorRight.duty_cycle_sp = SPEED_BASE+brake_reduce-(pid_corr)
                 #else:
@@ -282,6 +282,8 @@ while True:
 
         if progress == "INIT":
             if(index+1 == len(instructions)):
+                motorLeft.duty_cycle_sp = 0
+                motorRight.duty_cycle_sp = 0
                 progress = "DONE"
             else:
                 index += 1
@@ -302,6 +304,8 @@ while True:
                     progress = "INIT"
         
         if progress == "DONE":
+            motorLeft.duty_cycle_sp = 0
+            motorRight.duty_cycle_sp = 0
             print("Goal reached!")
 
             #if LOG:
@@ -316,6 +320,7 @@ while True:
     
     if state == "PUSH": 
         if progress == "INIT":
+            push_speed_increase = 2
             Kp = 1.2/2 #0.37
             #Ki = 0
             Kd = 15#10
@@ -327,8 +332,8 @@ while True:
             intersection = int(goal_push) + 1
             ls_bumper_line = False
 
-            motorLeft.duty_cycle_sp = SPEED_BASE
-            motorRight.duty_cycle_sp = SPEED_BASE
+            motorLeft.duty_cycle_sp = SPEED_BASE + push_speed_increase
+            motorRight.duty_cycle_sp = SPEED_BASE + push_speed_increase
 
             if not(ls_left_val < THRESHOLD_BLACK and ls_right_val < THRESHOLD_BLACK):
                 progress = "EXEC"
@@ -344,9 +349,9 @@ while True:
                 intersection -= 1
                 ls_bumper_line = True
             else:
-                if (SPEED_BASE+abs(pid_corr) <= 100):
-                    motorLeft.duty_cycle_sp = SPEED_BASE+(pid_corr)
-                    motorRight.duty_cycle_sp = SPEED_BASE-(pid_corr)
+                if (SPEED_BASE+abs(pid_corr)+push_speed_increase <= 100):
+                    motorLeft.duty_cycle_sp = SPEED_BASE+(pid_corr) + push_speed_increase
+                    motorRight.duty_cycle_sp = SPEED_BASE-(pid_corr) + push_speed_increase
 
                 if (ls_bumper_val > THRESHOLD_BU):
                     ls_bumper_line = False
