@@ -23,11 +23,11 @@ lightSensorLeft     = ev3.ColorSensor('in1')
 lightSensorRight    = ev3.ColorSensor('in4')
 lightSensorBumper   = ev3.LightSensor('in3')
 gyroSensor          = ev3.GyroSensor('in2')
-ls_corr         = -8
+ls_corr         = 0
 # Configure inputs
 gyroSensor.mode = 'GYRO-ANG'
 gs_units        = gyroSensor.units
-gs_tolerance    = 20
+gs_tolerance    = 15
 
 # Check if sonsors are connected
 assert lightSensorLeft.connected,   "Left light sensor is not connected (should be 'in1')"
@@ -68,8 +68,8 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 # Define various motor speeds
-SPEED_TURN  =  55
-SPEED_BASE  =  75
+SPEED_TURN  =  40#55
+SPEED_BASE  =  60
 SPEED_CORR  = -15
 SPEED_REV   = -60
 
@@ -104,9 +104,9 @@ def control_turn(dir_start, dir_goal):
 
     # Return relative turn anglei
     if(dir_val == 90):
-        return 100
+        return 90
     elif (dir_val == 180):
-        return 175
+        return 170
     else:
         return dir_val 
 
@@ -222,9 +222,9 @@ while True:
                 t0 = time.clock();
 
             # Set various control variables
-            Kp = 0.37
+            Kp = 1.2/2#0.37
             #Ki = 0
-            Kd = 10 
+            Kd = 15 #10 
             #acc = 0
             ls_error = 0
             ls_error_prev = 0
@@ -316,9 +316,9 @@ while True:
     
     if state == "PUSH": 
         if progress == "INIT":
-            Kp = 0.37
+            Kp = 1.2/2 #0.37
             #Ki = 0
-            Kd = 10
+            Kd = 15#10
 
             acc = 0
             ls_error = 0
@@ -363,6 +363,7 @@ while True:
             time.sleep(TIME_REV)
             motorLeft.duty_cycle_sp = 0
             motorRight.duty_cycle_sp = 0
+            time.sleep(0.1)
             dir_inv = { 'U': 'D',
                         'D': 'U',
                         'L': 'R',
